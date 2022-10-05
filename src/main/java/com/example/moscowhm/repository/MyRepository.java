@@ -1,23 +1,29 @@
-package com.example.moscowhm.layers;
+package com.example.moscowhm.repository;
 
 import com.example.moscowhm.model.City;
 import com.example.moscowhm.model.Person;
 import com.example.moscowhm.model.PersonalData;
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.transaction.Transactional;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 @Repository
+@RequiredArgsConstructor
 public class MyRepository implements CommandLineRunner {
-    @PersistenceContext
-    EntityManager entityManager;
+
+    private final PersonRepository personRepository;
+    private final CityRepository cityRepository;
+
 
     @Override
     @Transactional
@@ -26,9 +32,8 @@ public class MyRepository implements CommandLineRunner {
                 .map(n -> City.builder()
                         .name(n)
                         .build()).toList();
-        for (City city : cities) {
-            entityManager.persist(city);
-        }
+
+        cityRepository.saveAll(cities);
 
         var persons = List.of("Георгий Савченко", "Григорий Москаленко", "Павел Бубнов");
         Random random = new Random();
@@ -44,14 +49,21 @@ public class MyRepository implements CommandLineRunner {
                             .phoneNumber(1234)
                             .city(cities.get(random.nextInt(cities.size())))
                             .build();
-                    entityManager.persist(person);
+                    personRepository.save(person);
                 });
     }
 
-    public List<?> getPersons(String city) {
-        var answer = entityManager.createQuery("select p from Person p where p.city.name = :city")
-                .setParameter("city", city).getResultList();
+    public List<Person> getPersons(String city) {
 
-        return answer;
+        return personRepository.findByCity_Name(city);
+    }
+
+   public List<Person> gerPersonsByAge(int age){
+        return personRepository.findByPersonalData_AgeLessThanOrderByPersonalData_Age(age);
+    }
+
+    public List<Person> getPersonByNameAndLastName(String name, String lastName) throws Throwable {
+        return personRepository.findByPersonalData_NameAndPersonalData_Surname(name,lastName)
+                .orElseThrow(() -> new RuntimeException("пользователь не найден"));
     }
 }
